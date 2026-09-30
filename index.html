@@ -227,20 +227,35 @@
             </div>
           </div>
 
+          <!-- Guests Section -->
+          <div class="guest-section" style="margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--card-border);">
+            <div class="note-header">
+              <label for="guestInput">
+                <span class="icon">🪶</span>
+                <span>Misafirlerimiz (Varsa):</span>
+              </label>
+              <div class="quick-tags">
+                <button type="button" class="tag-btn guest-tag-btn" data-text="- Maraş( 3 kişi )">- Maraş</button>
+                <button type="button" class="tag-btn guest-tag-btn" data-text="- Ankara( 5 kişi )">- Ankara</button>
+                <button type="button" class="tag-btn guest-tag-btn" data-text="- İstanbul( 2 kişi )">- İstanbul</button>
+              </div>
+            </div>
+            <textarea id="guestInput" rows="2" class="custom-textarea" placeholder="Örnek:&#10;- Maraş( 3 kişi )&#10;- Ankara( 5 kişi)"></textarea>
+          </div>
+
           <!-- Note Section -->
           <div class="note-section">
             <div class="note-header">
               <label for="customNote">
                 <span class="icon">📝</span>
-                <span>Günün Özel Notu (Mesaja eklenecektir):</span>
+                <span>Günün Özel Notu (Opsiyonel):</span>
               </label>
               <div class="quick-tags">
-                <button type="button" class="tag-btn" data-text="Hayırlı nöbetler dileriz.">Hayırlı nöbetler</button>
-                <button type="button" class="tag-btn" data-text="Nöbet saatlerine riayet edilmesi rica olunur.">Rica olunur</button>
-                <button type="button" class="tag-btn" data-text="Kapı ve santral kontrolleri ihmal edilmesin.">Santral uyarısı</button>
+                <button type="button" class="tag-btn note-tag-btn" data-text="Hayırlı nöbetler dileriz.">Hayırlı nöbetler</button>
+                <button type="button" class="tag-btn note-tag-btn" data-text="Nöbet saatlerine riayet edilmesi rica olunur.">Rica olunur</button>
               </div>
             </div>
-            <textarea id="customNote" rows="3" class="custom-textarea" placeholder="Buraya günün özel talimatlarını veya eklemek istediğiniz notu yazabilirsiniz..."></textarea>
+            <textarea id="customNote" rows="2" class="custom-textarea" placeholder="Ekstra bir not eklemek isterseniz buraya yazabilirsiniz..."></textarea>
           </div>
         </div>
       </section>

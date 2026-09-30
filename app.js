@@ -115,6 +115,7 @@ let appState = {
     talebe: '',
     ihvan: ''
   },
+  guests: '',
   customNote: ''
 };
 
@@ -383,37 +384,58 @@ function renderCategorySelect(catKey) {
   }
 }
 
-// Generate Formatted WhatsApp Text
+// Generate Formatted WhatsApp Text (Kullanıcının İstediği Tüy Emojili Şablon)
 function buildWhatsAppMessage() {
-  const dateParts = appState.selectedDate.split('-');
-  let formattedDate = appState.selectedDate;
-  if (dateParts.length === 3) {
-    const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-    const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-    formattedDate = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${days[d.getDay()]}`;
+  const evliVal = appState.currentSelections.evli;
+  const bekarVal = appState.currentSelections.bekar;
+  const talebeVal = appState.currentSelections.talebe;
+  const santralVal = appState.currentSelections.santral;
+  const ihvanVal = appState.currentSelections.ihvan;
+  const guests = (appState.guests || '').trim();
+  const note = (appState.customNote || '').trim();
+
+  let blocks = [];
+
+  // 1. Evli Gece Nöbetçisi
+  if (evliVal) {
+    blocks.push(`🪶 *Evli Gece Nöbetçisi:*\n${evliVal}`);
   }
 
-  const evliVal = appState.currentSelections.evli || '-(Seçilmedi)-';
-  const bekarVal = appState.currentSelections.bekar || '-(Seçilmedi)-';
-  const santralVal = appState.currentSelections.santral || '-(Seçilmedi)-';
-  const talebeVal = appState.currentSelections.talebe || '-(Seçilmedi)-';
-  const ihvanVal = appState.currentSelections.ihvan || '-(Seçilmedi)-';
-  const note = appState.customNote.trim();
+  // 2. Gece Nöbetçisi (Bekar)
+  if (bekarVal) {
+    blocks.push(`🪶 *Gece Nöbetçisi:*\n${bekarVal}`);
+  }
 
-  let msg = `📋 *GÜNÜN NÖBET ÇİZELGESİ*\n`;
-  msg += `📅 *Tarih:* ${formattedDate}\n\n`;
-  msg += `💍 *Gece Nöbeti (Evli):* ${evliVal}\n`;
-  msg += `👤 *Gece Nöbeti (Bekar):* ${bekarVal}\n`;
-  msg += `📞 *Santral Nöbeti (Bekar):* ${santralVal}\n`;
-  msg += `📚 *Talebe Nöbeti:* ${talebeVal}\n`;
-  msg += `🤝 *İhvan Nöbeti:* ${ihvanVal}\n`;
+  // 3. Talebe Nöbetçisi
+  if (talebeVal) {
+    blocks.push(`🪶 *Talebe Nöbetçisi:*\n${talebeVal}`);
+  }
 
+  // 4. Santral Nöbetçisi (seçildiyse)
+  if (santralVal) {
+    blocks.push(`🪶 *Santral Nöbetçisi:*\n${santralVal}`);
+  }
+
+  // 5. İhvan Nöbetçisi (seçildiyse)
+  if (ihvanVal) {
+    blocks.push(`🪶 *İhvan Nöbetçisi:*\n${ihvanVal}`);
+  }
+
+  // 6. Misafirlerimiz (varsa)
+  if (guests) {
+    blocks.push(`🪶 *Misafirlerimiz:*\n${guests}`);
+  }
+
+  let msg = blocks.join('\n\n');
+
+  // Opsiyonel Not
   if (note) {
-    msg += `\n📝 *Özel Not:* ${note}\n`;
+    msg += (msg ? '\n\n' : '') + `📝 *Not:* ${note}`;
   }
 
-  msg += `\n_Hayırlı ve bereketli nöbetler dileriz._`;
+  // Sabit Nöbet Saatleri
+  msg += (msg ? '\n\n\n' : '') + `Gece Nöbeti: 22:00 – 07:30\nGündüz Nöbeti: 07:30 – 22:00`;
+
   return msg;
 }
 
@@ -447,6 +469,31 @@ function setupEventListeners() {
     }
   });
 
+  // Guest Input
+  const guestEl = document.getElementById('guestInput');
+  if (guestEl) {
+    guestEl.addEventListener('input', (e) => {
+      appState.guests = e.target.value;
+      updateLivePreview();
+    });
+  }
+
+  // Guest Quick Tags
+  document.querySelectorAll('.guest-tag-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.getAttribute('data-text');
+      if (guestEl) {
+        if (guestEl.value) {
+          guestEl.value += '\n' + text;
+        } else {
+          guestEl.value = text;
+        }
+        appState.guests = guestEl.value;
+        updateLivePreview();
+      }
+    });
+  });
+
   // Custom Note Input
   const noteEl = document.getElementById('customNote');
   if (noteEl) {
@@ -456,11 +503,10 @@ function setupEventListeners() {
     });
   }
 
-  // Quick Tags
-  document.querySelectorAll('.tag-btn').forEach(btn => {
+  // Note Quick Tags
+  document.querySelectorAll('.note-tag-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const text = btn.getAttribute('data-text');
-      const noteEl = document.getElementById('customNote');
       if (noteEl) {
         if (noteEl.value) {
           noteEl.value += ' ' + text;
@@ -584,6 +630,7 @@ function handleSaveAndSend(sendMode = 'web') {
     id: Date.now(),
     date: appState.selectedDate,
     selections: { ...appState.currentSelections },
+    guests: appState.guests,
     note: appState.customNote,
     timestamp: new Date().toISOString()
   };

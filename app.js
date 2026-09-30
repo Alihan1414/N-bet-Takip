@@ -491,15 +491,15 @@ function setupEventListeners() {
   const copyAndNotifyBtn = document.getElementById('copyAndNotifyBtn');
   if (copyAndNotifyBtn) copyAndNotifyBtn.addEventListener('click', handleCopy);
 
-  // Send WhatsApp Buttons (Web & App)
+  // Send WhatsApp Buttons (Main & Web)
+  const sendMainBtn = document.getElementById('sendWhatsAppMainBtn');
+  if (sendMainBtn) {
+    sendMainBtn.addEventListener('click', () => handleSaveAndSend('auto'));
+  }
+
   const sendWebBtn = document.getElementById('sendWhatsAppWebBtn');
   if (sendWebBtn) {
     sendWebBtn.addEventListener('click', () => handleSaveAndSend('web'));
-  }
-
-  const sendAppBtn = document.getElementById('sendWhatsAppAppBtn');
-  if (sendAppBtn) {
-    sendAppBtn.addEventListener('click', () => handleSaveAndSend('app'));
   }
 
   // Talebe ve İhvan İçin Kart Üzerinden Hızlı İsim Ekleme
@@ -606,23 +606,19 @@ function handleSaveAndSend(sendMode = 'web') {
     navigator.clipboard.writeText(msg).catch(() => {});
   }
 
-  // 6. WhatsApp Bağlantısını Aç (wa.me'nin emojileri bozan 302 yönlendirmesini atla!)
+  // 6. WhatsApp Bağlantısını Aç (Telefonda doğrudan WhatsApp uygulamasını açar)
   const encoded = encodeURIComponent(msg);
-  let waUrl;
-
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  
+  showToast('Nöbet kaydedildi & WhatsApp açılıyor... ✨');
+
   if (sendMode === 'app' || (sendMode === 'auto' && isMobile)) {
-    // Doğrudan WhatsApp Masaüstü / Mobil Uygulaması
-    waUrl = `whatsapp://send?phone=${TARGET_PHONE}&text=${encoded}`;
+    // Telefonda doğrudan yerel WhatsApp uygulamasını açar (web sayfası araya girmez)
+    window.location.href = `whatsapp://send?phone=${TARGET_PHONE}&text=${encoded}`;
   } else {
-    // Doğrudan WhatsApp Web (Meta wa.me yönlendirmesi olmadan, emojiler %100 kusursuz aktarılır)
-    waUrl = `https://web.whatsapp.com/send?phone=${TARGET_PHONE}&text=${encoded}`;
+    // Bilgisayarda doğrudan WhatsApp Web açar
+    window.open(`https://web.whatsapp.com/send?phone=${TARGET_PHONE}&text=${encoded}`, '_blank');
   }
-  
-  showToast('Nöbet kaydedildi & Metin panoya kopyalandı! WhatsApp açılıyor... ✨');
-  
-  // Yeni sekmede WhatsApp aç
-  window.open(waUrl, '_blank');
 }
 
 // Modal Setup & Member List Management

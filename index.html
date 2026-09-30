@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nöbet Çizelgesi & WhatsApp Bildirim Sistemi</title>
+  <meta name="description" content="Evli, bekar, santral, talebe ve ihvan nöbetlerinin akıllı döngü sistemi ile belirlenmesi ve WhatsApp üzerinden iletilmesi.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nöbet Takip">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="main-header">
+      <div class="header-left">
+        <div class="brand-badge">
+          <span class="pulse-dot"></span>
+          <span>Nöbet Takip Sistemi</span>
+        </div>
+        <h1 class="app-title">Günün Nöbet Çizelgesi</h1>
+        <p class="app-subtitle" id="todayFormattedText">Yükleniyor...</p>
+      </div>
+      <div class="header-right">
+        <button id="installAppBtn" class="btn btn-primary btn-sm install-pwa-btn" style="display: none;" title="Uygulamayı Telefona Yükle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          📲 Uygulamayı Yükle
+        </button>
+        <button id="openManageBtn" class="btn btn-secondary" title="Kişi Listelerini ve Döngüleri Yönet">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Listeleri Yönet
+        </button>
+        <button id="openHistoryBtn" class="btn btn-secondary" title="Geçmiş Nöbet Kayıtları">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+          Geçmiş
+        </button>
+      </div>
+    </header>
+
+    <!-- Special Day Alert Banner -->
+    <div id="dayAlertBanner" class="day-alert-banner" style="display: none;">
+      <div class="alert-icon">💡</div>
+      <div class="alert-content">
+        <strong id="dayAlertTitle">Günün Özel Durumu</strong>
+        <span id="dayAlertDesc">Cuma/Haftasonu nöbet hatırlatması</span>
+      </div>
+    </div>
+
+    <!-- Main Grid: Left Side Forms, Right Side Preview -->
+    <main class="content-layout">
+      <!-- Left Column: Shift Selections -->
+      <section class="selection-section">
+        <div class="card glass-card">
+          <div class="card-header">
+            <div class="section-title-wrap">
+              <span class="icon-bubble">📋</span>
+              <div>
+                <h2>Nöbetçi Seçimi</h2>
+                <p>Her kategoriden sıradaki kişiyi seçin. Nöbet tutanlar döngü bitene kadar kilitlenir.</p>
+              </div>
+            </div>
+            <div class="date-picker-wrap">
+              <label for="shiftDate">Nöbet Tarihi:</label>
+              <input type="date" id="shiftDate" class="input-date">
+            </div>
+          </div>
+
+          <div class="categories-grid">
+            <!-- 1. Evli Gece Nöbeti -->
+            <div class="category-card" id="card-evli">
+              <div class="category-header">
+                <div class="cat-title">
+                  <span class="cat-icon">💍</span>
+                  <div>
+                    <h3>Gece Nöbeti (Evli)</h3>
+                    <span class="cat-rule">Not: Ctesi Hilmi Yeni, Pazar Ahmed Hamza Tosun</span>
+                  </div>
+                </div>
+                <div class="cycle-pill" id="badge-evli">0 / 0</div>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-evli" style="width: 0%"></div>
+              </div>
+              <div class="form-group">
+                <label for="select-evli">Nöbetçi Kişi:</label>
+                <div class="select-wrapper">
+                  <select id="select-evli" class="custom-select">
+                    <option value="">-- Kişi Seçiniz --</option>
+                  </select>
+                </div>
+              </div>
+              <div class="status-tip" id="tip-evli"></div>
+            </div>
+
+            <!-- 2. Bekar Gece Nöbeti -->
+            <div class="category-card" id="card-bekar">
+              <div class="category-header">
+                <div class="cat-title">
+                  <span class="cat-icon">👤</span>
+                  <div>
+                    <h3>Gece Nöbeti (Bekar)</h3>
+                    <span class="cat-rule">Not: Cuma günleri Mustafa & Ömer Ekmekci</span>
+                  </div>
+                </div>
+                <div class="cycle-pill" id="badge-bekar">0 / 0</div>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-bekar" style="width: 0%"></div>
+              </div>
+              <div class="form-group">
+                <label for="select-bekar">Nöbetçi Kişi:</label>
+                <div class="select-wrapper">
+                  <select id="select-bekar" class="custom-select">
+                    <option value="">-- Kişi Seçiniz --</option>
+                  </select>
+                </div>
+              </div>
+              <div class="status-tip" id="tip-bekar"></div>
+            </div>
+
+            <!-- 3. Santral Nöbeti -->
+            <div class="category-card" id="card-santral">
+              <div class="category-header">
+                <div class="cat-title">
+                  <span class="cat-icon">📞</span>
+                  <div>
+                    <h3>Santral Nöbeti (Bekar)</h3>
+                    <span class="cat-rule">Santral ve danışma sorumlusu</span>
+                  </div>
+                </div>
+                <div class="cycle-pill" id="badge-santral">0 / 0</div>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-santral" style="width: 0%"></div>
+              </div>
+              <div class="form-group">
+                <label for="select-santral">Nöbetçi Kişi:</label>
+                <div class="select-wrapper">
+                  <select id="select-santral" class="custom-select">
+                    <option value="">-- Kişi Seçiniz --</option>
+                  </select>
+                </div>
+              </div>
+              <div class="status-tip" id="tip-santral"></div>
+            </div>
+
+            <!-- 4. Talebe Nöbeti -->
+            <div class="category-card" id="card-talebe">
+              <div class="category-header">
+                <div class="cat-title">
+                  <span class="cat-icon">📚</span>
+                  <div>
+                    <h3>Talebe Nöbeti</h3>
+                    <span class="cat-rule">Günün talebe görevlisi</span>
+                  </div>
+                </div>
+                <div class="cycle-pill" id="badge-talebe">0 / 0</div>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-talebe" style="width: 0%"></div>
+              </div>
+              <div class="form-group">
+                <label for="select-talebe">Nöbetçi Kişi Seç:</label>
+                <div class="select-wrapper">
+                  <select id="select-talebe" class="custom-select">
+                    <option value="">-- Kişi Seçiniz --</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Hızlı İsim Ekleme -->
+              <div class="inline-add-box">
+                <label for="quickAdd-talebe">veya Listeye Yeni Talebe Ekle:</label>
+                <div class="inline-add-row">
+                  <input type="text" id="quickAdd-talebe" class="quick-add-input" placeholder="Talebe adı yazın..." autocomplete="off">
+                  <button type="button" id="quickAddBtn-talebe" class="btn btn-primary btn-sm btn-quick-add">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Ekle
+                  </button>
+                </div>
+              </div>
+              <div class="status-tip" id="tip-talebe"></div>
+            </div>
+
+            <!-- 5. İhvan Nöbeti -->
+            <div class="category-card" id="card-ihvan">
+              <div class="category-header">
+                <div class="cat-title">
+                  <span class="cat-icon">🤝</span>
+                  <div>
+                    <h3>İhvan Nöbeti</h3>
+                    <span class="cat-rule">Günün ihvan görevlisi</span>
+                  </div>
+                </div>
+                <div class="cycle-pill" id="badge-ihvan">0 / 0</div>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-ihvan" style="width: 0%"></div>
+              </div>
+              <div class="form-group">
+                <label for="select-ihvan">Nöbetçi Kişi Seç:</label>
+                <div class="select-wrapper">
+                  <select id="select-ihvan" class="custom-select">
+                    <option value="">-- Kişi Seçiniz --</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Hızlı İsim Ekleme -->
+              <div class="inline-add-box">
+                <label for="quickAdd-ihvan">veya Listeye Yeni İhvan Ekle:</label>
+                <div class="inline-add-row">
+                  <input type="text" id="quickAdd-ihvan" class="quick-add-input" placeholder="İhvan adı yazın..." autocomplete="off">
+                  <button type="button" id="quickAddBtn-ihvan" class="btn btn-primary btn-sm btn-quick-add">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Ekle
+                  </button>
+                </div>
+              </div>
+              <div class="status-tip" id="tip-ihvan"></div>
+            </div>
+          </div>
+
+          <!-- Note Section -->
+          <div class="note-section">
+            <div class="note-header">
+              <label for="customNote">
+                <span class="icon">📝</span>
+                <span>Günün Özel Notu (Mesaja eklenecektir):</span>
+              </label>
+              <div class="quick-tags">
+                <button type="button" class="tag-btn" data-text="Hayırlı nöbetler dileriz.">Hayırlı nöbetler</button>
+                <button type="button" class="tag-btn" data-text="Nöbet saatlerine riayet edilmesi rica olunur.">Rica olunur</button>
+                <button type="button" class="tag-btn" data-text="Kapı ve santral kontrolleri ihmal edilmesin.">Santral uyarısı</button>
+              </div>
+            </div>
+            <textarea id="customNote" rows="3" class="custom-textarea" placeholder="Buraya günün özel talimatlarını veya eklemek istediğiniz notu yazabilirsiniz..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: WhatsApp Live Preview & Actions -->
+      <section class="preview-section">
+        <div class="card glass-card preview-card">
+          <div class="card-header">
+            <div class="section-title-wrap">
+              <span class="icon-bubble whatsapp-bubble">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+              </span>
+              <div>
+                <h2>WhatsApp Canlı Önizleme</h2>
+                <p>Hedef: <strong class="phone-highlight">+90 541 571 98 89</strong></p>
+              </div>
+            </div>
+            <button id="copyMsgBtn" class="btn btn-sm btn-outline" title="Mesajı Panoya Kopyala">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Kopyala
+            </button>
+          </div>
+
+          <!-- WhatsApp chat bubble simulation -->
+          <div class="whatsapp-mockup">
+            <div class="wa-header">
+              <div class="wa-avatar">📱</div>
+              <div class="wa-contact">
+                <span class="wa-name">Nöbet Bildirim Hattı</span>
+                <span class="wa-status">+90 541 571 98 89</span>
+              </div>
+            </div>
+            <div class="wa-chat-body">
+              <div class="wa-bubble">
+                <pre id="waMessageText" class="wa-text-content">Seçimlerinizi yaptığınızda mesaj burada otomatik şekillenecektir...</pre>
+                <div class="wa-bubble-footer">
+                  <span id="waTimeDisplay">20:30</span>
+                  <span class="wa-ticks">✓✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="action-buttons">
+            <button id="sendWhatsAppWebBtn" class="btn btn-primary btn-lg btn-whatsapp" title="WhatsApp Web üzerinden emojileri bozmadan doğrudan gönder">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+              <span>Nöbeti Kaydet & WhatsApp'a Gönder</span>
+            </button>
+            <div class="alt-send-row">
+              <button id="sendWhatsAppAppBtn" class="btn btn-secondary btn-sm" title="Masaüstü veya Telefonda WhatsApp uygulamasını doğrudan açar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                WhatsApp Masaüstü / App ile Aç
+              </button>
+              <button id="copyAndNotifyBtn" class="btn btn-outline btn-sm" title="Mesajı emojileriyle birlikte panoya kopyalar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Metni Kopyala
+              </button>
+            </div>
+            <p class="btn-caption">💡 Emojilerin bozulmaması için doğrudan <strong>WhatsApp Web</strong> açılır ve metin aynı zamanda panonuza otomatik kopyalanır.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal: Manage Lists & Cycles -->
+    <div id="manageModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="icon">⚙️</span>
+            <h3>Kişi Listesi ve Döngü Yönetimi</h3>
+          </div>
+          <button class="modal-close-btn" id="closeManageModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-tabs">
+            <button class="tab-btn active" data-tab="tab-evli">Evli (Gece)</button>
+            <button class="tab-btn" data-tab="tab-bekar">Bekar (Gece)</button>
+            <button class="tab-btn" data-tab="tab-santral">Santral</button>
+            <button class="tab-btn" data-tab="tab-talebe">Talebe</button>
+            <button class="tab-btn" data-tab="tab-ihvan">İhvan</button>
+          </div>
+
+          <div id="tabContentContainer" class="tab-content">
+            <!-- Dynamic Content populated via JS -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" id="resetCurrentCycleBtn">Bu Kategorinin Döngüsünü Sıfırla</button>
+          <button class="btn btn-secondary" id="closeManageModal2">Kapat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: History Logs -->
+    <div id="historyModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="icon">📜</span>
+            <h3>Geçmiş Nöbet Kayıtları</h3>
+          </div>
+          <button class="modal-close-btn" id="closeHistoryModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="historyListContainer" class="history-list">
+            <!-- Dynamic Content -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-danger btn-sm" id="clearHistoryBtn">Geçmişi Temizle</button>
+          <button class="btn btn-secondary" id="closeHistoryModal2">Kapat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: iOS & Mobile Install Guide -->
+    <div id="iosInstallModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card" style="max-width: 480px;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="icon">📲</span>
+            <h3>Telefona Uygulama Olarak Yükle</h3>
+          </div>
+          <button class="modal-close-btn" id="closeIosModal">&times;</button>
+        </div>
+        <div class="modal-body" style="line-height: 1.6; font-size: 0.95rem;">
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <strong style="color: #34d399; display: block; margin-bottom: 6px;">🍎 iPhone / iPad (Safari):</strong>
+            <ol style="padding-left: 20px; color: #e5e7eb;">
+              <li>Safari'nin alt menüsündeki <strong>Paylaş</strong> simgesine (<span style="font-size: 1.1rem;">📤</span>) dokunun.</li>
+              <li>Açılan menüde aşağı kaydırıp <strong>"Ana Ekrana Ekle"</strong> seçeneğini seçin.</li>
+              <li>Sağ üstteki <strong>"Ekle"</strong> butonuna basın.</li>
+            </ol>
+          </div>
+          <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 16px;">
+            <strong style="color: #60a5fa; display: block; margin-bottom: 6px;">🤖 Android (Chrome):</strong>
+            <ol style="padding-left: 20px; color: #e5e7eb;">
+              <li>Chrome menüsündeki üç nokta (<strong>⋮</strong>) simgesine dokunun.</li>
+              <li><strong>"Uygulamayı Yükle"</strong> veya <strong>"Ana ekrana ekle"</strong> seçeneğine tıklayın.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" id="closeIosModal2" style="width: 100%;">Anladım</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-box">Mesaj kopyalandı!</div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

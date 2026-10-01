@@ -1080,3 +1080,22 @@ body {
     flex-direction: column;
   }
 }
+
+/* Talebe 2-Kişi Seçimi Çift Dropdown Stili */
+.talebe-two-selects {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (min-width: 640px) {
+  .talebe-two-selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .talebe-two-selects .form-group {
+    margin-top: 0 !important;
+  }
+}

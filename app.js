@@ -63,25 +63,6 @@ const DEFAULT_DATA = {
     ],
     cycleCount: 1
   },
-  santral: {
-    id: 'santral',
-    title: 'Santral Nöbeti (Bekar)',
-    icon: '📞',
-    names: [
-      'Şevket Efe Özlü',
-      'Seyfullah Ünal',
-      'Mehmet Hilmi Aratekin',
-      'Mehmet Berat Divanlı',
-      'Hasan Kemal Kacar',
-      'Feyyaz Gürlekçe',
-      'Beraat Samim Yıldırım',
-      'Ahmet Faruk Gözel',
-      'Abdulkadir Usta',
-      'Ahmet Hamza Tosun'
-    ],
-    served: [],
-    cycleCount: 1
-  },
   talebe: {
     id: 'talebe',
     title: 'Talebe Nöbeti',
@@ -111,8 +92,8 @@ let appState = {
   currentSelections: {
     evli: '',
     bekar: '',
-    santral: '',
-    talebe: '',
+    talebe1: '',
+    talebe2: '',
     ihvan: ''
   },
   guests: '',
@@ -131,13 +112,53 @@ document.addEventListener('DOMContentLoaded', () => {
   initPwaInstall();
 });
 
-// PWA Service Worker Registration
+// PWA Service Worker Registration with Aggressive Auto-Update
 function initServiceWorker() {
   if ('serviceWorker' in navigator) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        console.log('Yeni sürüm devreye girdi, sayfa yenileniyor...');
+        window.location.reload();
+      }
+    });
+
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('Service Worker kayıtlı:', reg.scope))
+        .then(reg => {
+          console.log('Service Worker kayıtlı:', reg.scope);
+
+          // Sayfa açıldığında anında güncelleme kontrol et
+          reg.update();
+
+          // Bekleyen yeni worker varsa hemen devreye sok
+          if (reg.waiting) {
+            reg.waiting.postMessage({ action: 'skipWaiting' });
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  showToast('Yeni sürüm bulundu, sayfa güncelleniyor... 🔄');
+                  newWorker.postMessage({ action: 'skipWaiting' });
+                }
+              });
+            }
+          });
+        })
         .catch(err => console.log('Service Worker hatası:', err));
+    });
+
+    // Kullanıcı sekmeye her döndüğünde güncelleme kontrol et
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.update().catch(() => {});
+        }).catch(() => {});
+      }
     });
   }
 }
@@ -205,6 +226,11 @@ function loadState() {
       }
       if (appState.categories.ihvan) {
         appState.categories.ihvan.names = appState.categories.ihvan.names.filter(n => !n.startsWith('İhvan Ekip'));
+      }
+      // Santral nöbetini sistemden ve hafızadan tamamen kaldır
+      if (appState.categories.santral) {
+        delete appState.categories.santral;
+        saveCategories();
       }
     } catch (e) {
       console.error('Kayıtlı veri okunamadı, varsayılan yükleniyor', e);
@@ -296,7 +322,7 @@ function checkDayAlerts(dateObj = new Date()) {
 
 // Render Dropdowns with Smart Rotation Lock
 function renderAllSelects() {
-  const catKeys = ['evli', 'bekar', 'santral', 'talebe', 'ihvan'];
+  const catKeys = ['evli', 'bekar', 'talebe', 'ihvan'];
   catKeys.forEach(catKey => renderCategorySelect(catKey));
 }
 
@@ -304,12 +330,9 @@ function renderCategorySelect(catKey) {
   const cat = appState.categories[catKey];
   if (!cat) return;
 
-  const selectEl = document.getElementById(`select-${catKey}`);
   const badgeEl = document.getElementById(`badge-${catKey}`);
   const progressEl = document.getElementById(`progress-${catKey}`);
   const tipEl = document.getElementById(`tip-${catKey}`);
-
-  if (!selectEl) return;
 
   const totalNames = cat.names.length;
   const servedCount = cat.served.length;
@@ -330,15 +353,84 @@ function renderCategorySelect(catKey) {
     progressEl.style.width = `${pct}%`;
   }
 
-  // Options
-  const currentVal = appState.currentSelections[catKey] || '';
-  selectEl.innerHTML = '<option value="">-- Kişi Seçiniz --</option>';
+  // Özel Durum: Talebe Nöbeti (2 Kişi Seçimi)
+  if (catKey === 'talebe') {
+    const select1 = document.getElementById('select-talebe-1');
+    const select2 = document.getElementById('select-talebe-2');
+    if (!select1 || !select2) return;
 
-  // Sort: available first, served later
-  const availableNames = cat.names.filter(n => !cat.served.includes(n));
-  const servedNames = cat.names.filter(n => cat.served.includes(n));
+    const val1 = appState.currentSelections.talebe1 || '';
+    const val2 = appState.currentSelections.talebe2 || '';
 
-  // Available options
+    const availableNames = cat.names.filter(n => !cat.served.includes(n));
+    const servedNames = cat.names.filter(n => cat.served.includes(n));
+
+    // 1. Talebe Dropdown
+    populateTalebeSelect(select1, availableNames, servedNames, val1, val2, '-- 1. Kişiyi Seçiniz --');
+    // 2. Talebe Dropdown
+    populateTalebeSelect(select2, availableNames, servedNames, val2, val1, '-- 2. Kişiyi Seçiniz --');
+  } else {
+    // Normal tekli seçim (evli, bekar, ihvan)
+    const selectEl = document.getElementById(`select-${catKey}`);
+    if (!selectEl) return;
+
+    const currentVal = appState.currentSelections[catKey] || '';
+    selectEl.innerHTML = '<option value="">-- Kişi Seçiniz --</option>';
+
+    const availableNames = cat.names.filter(n => !cat.served.includes(n));
+    const servedNames = cat.names.filter(n => cat.served.includes(n));
+
+    // Available options
+    if (availableNames.length > 0) {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = `Nöbet Sırası Bekleyenler (${availableNames.length})`;
+      availableNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (name === currentVal) opt.selected = true;
+        optgroup.appendChild(opt);
+      });
+      selectEl.appendChild(optgroup);
+    }
+
+    // Already served (Locked) options
+    if (servedNames.length > 0) {
+      const optgroupLocked = document.createElement('optgroup');
+      optgroupLocked.label = `Döngüde Nöbet Tutanlar [Kilitli] (${servedNames.length})`;
+      servedNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = `✓ ${name} (Bu döngüde tuttu)`;
+        opt.disabled = true;
+        optgroupLocked.appendChild(opt);
+      });
+      selectEl.appendChild(optgroupLocked);
+    }
+  }
+
+  // Status tip text
+  if (tipEl) {
+    if (totalNames === 0) {
+      tipEl.className = 'status-tip';
+      tipEl.textContent = 'Aşağıdaki kutudan yeni isim girip "Ekle"ye basabilirsiniz.';
+    } else if (waitingCount === 0 && totalNames > 0) {
+      tipEl.className = 'status-tip success';
+      tipEl.textContent = '🎉 Bu kategorideki herkes nöbet tuttu! Gönderim sonrası döngü otomatik sıfırlanacaktır.';
+    } else if (waitingCount === 1) {
+      const remaining = cat.names.find(n => !cat.served.includes(n)) || '';
+      tipEl.className = 'status-tip warning';
+      tipEl.textContent = `⚡ Son 1 kişi kaldı: ${remaining}`;
+    } else {
+      tipEl.className = 'status-tip';
+      tipEl.textContent = `${waitingCount} kişi nöbet sırası bekliyor.`;
+    }
+  }
+}
+
+function populateTalebeSelect(selectEl, availableNames, servedNames, currentVal, otherVal, placeholder) {
+  selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+
   if (availableNames.length > 0) {
     const optgroup = document.createElement('optgroup');
     optgroup.label = `Nöbet Sırası Bekleyenler (${availableNames.length})`;
@@ -346,13 +438,17 @@ function renderCategorySelect(catKey) {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
-      if (name === currentVal) opt.selected = true;
+      if (name === currentVal) {
+        opt.selected = true;
+      } else if (name === otherVal) {
+        opt.disabled = true;
+        opt.textContent = `${name} (Diğer seçimde seçildi)`;
+      }
       optgroup.appendChild(opt);
     });
     selectEl.appendChild(optgroup);
   }
 
-  // Already served (Locked) options
   if (servedNames.length > 0) {
     const optgroupLocked = document.createElement('optgroup');
     optgroupLocked.label = `Döngüde Nöbet Tutanlar [Kilitli] (${servedNames.length})`;
@@ -365,31 +461,15 @@ function renderCategorySelect(catKey) {
     });
     selectEl.appendChild(optgroupLocked);
   }
-
-  // Status tip text
-  if (tipEl) {
-    if (totalNames === 0) {
-      tipEl.className = 'status-tip';
-      tipEl.textContent = 'Aşağıdaki kutudan yeni isim girip "Ekle"ye basabilirsiniz.';
-    } else if (waitingCount === 0 && totalNames > 0) {
-      tipEl.className = 'status-tip success';
-      tipEl.textContent = '🎉 Bu kategorideki herkes nöbet tuttu! Gönderim sonrası döngü otomatik sıfırlanacaktır.';
-    } else if (waitingCount === 1) {
-      tipEl.className = 'status-tip warning';
-      tipEl.textContent = `⚡ Son 1 kişi kaldı: ${availableNames[0]}`;
-    } else {
-      tipEl.className = 'status-tip';
-      tipEl.textContent = `${waitingCount} kişi nöbet sırası bekliyor.`;
-    }
-  }
 }
 
 // Generate Formatted WhatsApp Text (Kullanıcının İstediği Tüy Emojili Şablon)
 function buildWhatsAppMessage() {
   const evliVal = appState.currentSelections.evli;
   const bekarVal = appState.currentSelections.bekar;
-  const talebeVal = appState.currentSelections.talebe;
-  const santralVal = appState.currentSelections.santral;
+  const t1 = appState.currentSelections.talebe1;
+  const t2 = appState.currentSelections.talebe2;
+  const talebeVal = [t1, t2].filter(Boolean).join(' - ');
   const ihvanVal = appState.currentSelections.ihvan;
   const guests = (appState.guests || '').trim();
   const note = (appState.customNote || '').trim();
@@ -406,22 +486,17 @@ function buildWhatsAppMessage() {
     blocks.push(`🪶 *Gece Nöbetçisi:*\n${bekarVal}`);
   }
 
-  // 3. Talebe Nöbetçisi
+  // 3. Talebe Nöbetçisi (2 Kişi yan yana: Feyyaz GÜRLEKÇE - Berat samim YILDIRIM)
   if (talebeVal) {
     blocks.push(`🪶 *Talebe Nöbetçisi:*\n${talebeVal}`);
   }
 
-  // 4. Santral Nöbetçisi (seçildiyse)
-  if (santralVal) {
-    blocks.push(`🪶 *Santral Nöbetçisi:*\n${santralVal}`);
-  }
-
-  // 5. İhvan Nöbetçisi (seçildiyse)
+  // 4. İhvan Nöbetçisi (seçildiyse)
   if (ihvanVal) {
     blocks.push(`🪶 *İhvan Nöbetçisi:*\n${ihvanVal}`);
   }
 
-  // 6. Misafirlerimiz (varsa)
+  // 5. Misafirlerimiz (varsa)
   if (guests) {
     blocks.push(`🪶 *Misafirlerimiz:*\n${guests}`);
   }
@@ -457,9 +532,8 @@ function updateLivePreview() {
 
 // Event Listeners
 function setupEventListeners() {
-  // Category Select Changes
-  const catKeys = ['evli', 'bekar', 'santral', 'talebe', 'ihvan'];
-  catKeys.forEach(catKey => {
+  // Tekli Seçimler (Evli, Bekar, İhvan)
+  ['evli', 'bekar', 'ihvan'].forEach(catKey => {
     const select = document.getElementById(`select-${catKey}`);
     if (select) {
       select.addEventListener('change', (e) => {
@@ -468,6 +542,24 @@ function setupEventListeners() {
       });
     }
   });
+
+  // Talebe 1 ve Talebe 2 Seçimleri
+  const selTalebe1 = document.getElementById('select-talebe-1');
+  const selTalebe2 = document.getElementById('select-talebe-2');
+  if (selTalebe1) {
+    selTalebe1.addEventListener('change', (e) => {
+      appState.currentSelections.talebe1 = e.target.value;
+      renderCategorySelect('talebe');
+      updateLivePreview();
+    });
+  }
+  if (selTalebe2) {
+    selTalebe2.addEventListener('change', (e) => {
+      appState.currentSelections.talebe2 = e.target.value;
+      renderCategorySelect('talebe');
+      updateLivePreview();
+    });
+  }
 
   // Guest Input
   const guestEl = document.getElementById('guestInput');
@@ -569,8 +661,18 @@ function setupEventListeners() {
         cat.names.push(val);
       }
 
-      // Bugünün nöbetçisi olarak otomatik seç
-      appState.currentSelections[catKey] = val;
+      // Bugünün nöbetçisi olarak otomatik ata
+      if (catKey === 'talebe') {
+        if (!appState.currentSelections.talebe1) {
+          appState.currentSelections.talebe1 = val;
+        } else if (!appState.currentSelections.talebe2 && appState.currentSelections.talebe1 !== val) {
+          appState.currentSelections.talebe2 = val;
+        } else {
+          appState.currentSelections.talebe1 = val;
+        }
+      } else {
+        appState.currentSelections[catKey] = val;
+      }
 
       saveCategories();
       renderCategorySelect(catKey);
@@ -592,23 +694,63 @@ function setupEventListeners() {
   setupQuickAdd('talebe');
   setupQuickAdd('ihvan');
 
+  // Zorla Sayfa & Önbellek Yenileme (Kullanıcının her zaman en güncel sürümde kalması için)
+  const forceRefreshBtn = document.getElementById('forceRefreshBtn');
+  if (forceRefreshBtn) {
+    forceRefreshBtn.addEventListener('click', async () => {
+      showToast('Önbellek temizleniyor ve en güncel sürüm alınıyor... 🔄');
+
+      // 1. Tarayıcı Cache Storage önbelleklerini temizle
+      if ('caches' in window) {
+        try {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        } catch (e) {
+          console.error('Önbellek temizleme hatası:', e);
+        }
+      }
+
+      // 2. Service Worker kayıtlarını temizle
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let reg of registrations) {
+            await reg.unregister();
+          }
+        } catch (e) {}
+      }
+
+      // 3. Cache-busting URL ile sert yenileme yap
+      setTimeout(() => {
+        window.location.href = window.location.pathname + '?v=' + Date.now();
+      }, 400);
+    });
+  }
+
   // Modal Open/Close
   setupModals();
 }
 
 // Save Shift, Update Cycle, and Launch WhatsApp
 function handleSaveAndSend(sendMode = 'web') {
-  const selectedCounts = Object.values(appState.currentSelections).filter(v => Boolean(v)).length;
-  if (selectedCounts === 0) {
+  const selectedValues = [
+    appState.currentSelections.evli,
+    appState.currentSelections.bekar,
+    appState.currentSelections.talebe1,
+    appState.currentSelections.talebe2,
+    appState.currentSelections.ihvan
+  ].filter(Boolean);
+
+  if (selectedValues.length === 0) {
     alert('Lütfen en az bir nöbetçi seçiniz!');
     return;
   }
 
   // 1. Her seçilen ismi kendi kategorisinin "served" listesine ekle
   let resetHappened = [];
-  const catKeys = ['evli', 'bekar', 'santral', 'talebe', 'ihvan'];
-  
-  catKeys.forEach(catKey => {
+
+  // Evli, Bekar, İhvan
+  ['evli', 'bekar', 'ihvan'].forEach(catKey => {
     const chosen = appState.currentSelections[catKey];
     const cat = appState.categories[catKey];
     if (chosen && cat) {
@@ -625,11 +767,33 @@ function handleSaveAndSend(sendMode = 'web') {
     }
   });
 
+  // Talebe (2 kişi seçilebilir)
+  const talebeCat = appState.categories.talebe;
+  if (talebeCat) {
+    const talebePicks = [appState.currentSelections.talebe1, appState.currentSelections.talebe2].filter(Boolean);
+    talebePicks.forEach(p => {
+      if (!talebeCat.served.includes(p)) {
+        talebeCat.served.push(p);
+      }
+    });
+
+    if (talebeCat.served.length >= talebeCat.names.length && talebeCat.names.length > 0) {
+      talebeCat.served = [];
+      talebeCat.cycleCount = (talebeCat.cycleCount || 1) + 1;
+      resetHappened.push(talebeCat.title);
+    }
+  }
+
   // 2. Geçmişe kaydet
   const historyRecord = {
     id: Date.now(),
     date: appState.selectedDate,
-    selections: { ...appState.currentSelections },
+    selections: {
+      evli: appState.currentSelections.evli,
+      bekar: appState.currentSelections.bekar,
+      talebe: [appState.currentSelections.talebe1, appState.currentSelections.talebe2].filter(Boolean).join(' - '),
+      ihvan: appState.currentSelections.ihvan
+    },
     guests: appState.guests,
     note: appState.customNote,
     timestamp: new Date().toISOString()
@@ -872,12 +1036,12 @@ function renderHistoryList() {
         <span style="color: var(--text-dim); font-size: 0.75rem;">${new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
       <div class="history-grid">
-        <div class="history-item-line">💍 Evli: <strong>${item.selections.evli || '-'}</strong></div>
-        <div class="history-item-line">👤 Bekar: <strong>${item.selections.bekar || '-'}</strong></div>
-        <div class="history-item-line">📞 Santral: <strong>${item.selections.santral || '-'}</strong></div>
-        <div class="history-item-line">📚 Talebe: <strong>${item.selections.talebe || '-'}</strong></div>
-        <div class="history-item-line">🤝 İhvan: <strong>${item.selections.ihvan || '-'}</strong></div>
+        <div class="history-item-line">💍 Evli: <strong>${item.selections?.evli || '-'}</strong></div>
+        <div class="history-item-line">👤 Bekar: <strong>${item.selections?.bekar || '-'}</strong></div>
+        <div class="history-item-line">📚 Talebe: <strong>${item.selections?.talebe || '-'}</strong></div>
+        <div class="history-item-line">🤝 İhvan: <strong>${item.selections?.ihvan || '-'}</strong></div>
       </div>
+      ${item.guests ? `<div class="history-note" style="margin-bottom: 4px;">🪶 Misafirler: ${item.guests}</div>` : ''}
       ${item.note ? `<div class="history-note">📝 Not: ${item.note}</div>` : ''}
     `;
     container.appendChild(card);

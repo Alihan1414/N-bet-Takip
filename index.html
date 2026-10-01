@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nöbet Çizelgesi & WhatsApp Bildirim Sistemi</title>
-  <meta name="description" content="Evli, bekar, santral, talebe ve ihvan nöbetlerinin akıllı döngü sistemi ile belirlenmesi ve WhatsApp üzerinden iletilmesi.">
+  <meta name="description" content="Evli, bekar, talebe ve ihvan nöbetlerinin akıllı döngü sistemi ile belirlenmesi ve WhatsApp üzerinden iletilmesi.">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -12,10 +12,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Nöbet Takip">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.2.0">
 </head>
 <body>
   <div class="app-container">
@@ -41,6 +44,10 @@
         <button id="openHistoryBtn" class="btn btn-secondary" title="Geçmiş Nöbet Kayıtları">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
           Geçmiş
+        </button>
+        <button id="forceRefreshBtn" class="btn btn-outline" title="Önbelleği Temizle ve En Güncel Sürümü Yükle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          Yenile
         </button>
       </div>
     </header>
@@ -126,40 +133,14 @@
               <div class="status-tip" id="tip-bekar"></div>
             </div>
 
-            <!-- 3. Santral Nöbeti -->
-            <div class="category-card" id="card-santral">
-              <div class="category-header">
-                <div class="cat-title">
-                  <span class="cat-icon">📞</span>
-                  <div>
-                    <h3>Santral Nöbeti (Bekar)</h3>
-                    <span class="cat-rule">Santral ve danışma sorumlusu</span>
-                  </div>
-                </div>
-                <div class="cycle-pill" id="badge-santral">0 / 0</div>
-              </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" id="progress-santral" style="width: 0%"></div>
-              </div>
-              <div class="form-group">
-                <label for="select-santral">Nöbetçi Kişi:</label>
-                <div class="select-wrapper">
-                  <select id="select-santral" class="custom-select">
-                    <option value="">-- Kişi Seçiniz --</option>
-                  </select>
-                </div>
-              </div>
-              <div class="status-tip" id="tip-santral"></div>
-            </div>
-
-            <!-- 4. Talebe Nöbeti -->
+            <!-- 3. Talebe Nöbeti (2 Kişi Seçimi) -->
             <div class="category-card" id="card-talebe">
               <div class="category-header">
                 <div class="cat-title">
                   <span class="cat-icon">📚</span>
                   <div>
-                    <h3>Talebe Nöbeti</h3>
-                    <span class="cat-rule">Günün talebe görevlisi</span>
+                    <h3>Talebe Nöbeti (2 Kişi)</h3>
+                    <span class="cat-rule">Günün talebe görevlileri</span>
                   </div>
                 </div>
                 <div class="cycle-pill" id="badge-talebe">0 / 0</div>
@@ -167,12 +148,22 @@
               <div class="progress-bar-bg">
                 <div class="progress-bar-fill" id="progress-talebe" style="width: 0%"></div>
               </div>
-              <div class="form-group">
-                <label for="select-talebe">Nöbetçi Kişi Seç:</label>
-                <div class="select-wrapper">
-                  <select id="select-talebe" class="custom-select">
-                    <option value="">-- Kişi Seçiniz --</option>
-                  </select>
+              <div class="talebe-two-selects">
+                <div class="form-group">
+                  <label for="select-talebe-1">1. Talebe Nöbetçisi:</label>
+                  <div class="select-wrapper">
+                    <select id="select-talebe-1" class="custom-select">
+                      <option value="">-- 1. Kişiyi Seçiniz --</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                  <label for="select-talebe-2">2. Talebe Nöbetçisi:</label>
+                  <div class="select-wrapper">
+                    <select id="select-talebe-2" class="custom-select">
+                      <option value="">-- 2. Kişiyi Seçiniz --</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <!-- Hızlı İsim Ekleme -->
@@ -335,7 +326,6 @@
           <div class="modal-tabs">
             <button class="tab-btn active" data-tab="tab-evli">Evli (Gece)</button>
             <button class="tab-btn" data-tab="tab-bekar">Bekar (Gece)</button>
-            <button class="tab-btn" data-tab="tab-santral">Santral</button>
             <button class="tab-btn" data-tab="tab-talebe">Talebe</button>
             <button class="tab-btn" data-tab="tab-ihvan">İhvan</button>
           </div>
@@ -410,6 +400,6 @@
     <div id="toastNotification" class="toast-box">Mesaj kopyalandı!</div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.2.0"></script>
 </body>
 </html>

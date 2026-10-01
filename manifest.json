@@ -1,7 +1,7 @@
 {
   "name": "Nöbet Çizelgesi & WhatsApp Sistemi",
   "short_name": "Nöbet Takip",
-  "description": "Evli, bekar, santral, talebe ve ihvan nöbetlerinin akıllı döngü sistemi ile takibi ve WhatsApp bildirimleri.",
+  "description": "Evli, bekar, talebe ve ihvan nöbetlerinin akıllı döngü sistemi ile takibi ve WhatsApp bildirimleri.",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
